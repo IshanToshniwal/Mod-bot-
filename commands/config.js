@@ -70,6 +70,12 @@ module.exports = [
         .addBooleanOption((o) => o.setName('enabled').setDescription('Send DMs?').setRequired(true)))
       .addSubcommand((s) => s.setName('autorole').setDescription('Role given to new members (pick none to disable)')
         .addRoleOption((o) => o.setName('role').setDescription('Role')))
+      .addSubcommand((s) => s.setName('appeal').setDescription('Link included in ban/kick DMs (empty to remove)')
+        .addStringOption((o) => o.setName('url').setDescription('https://…').setMaxLength(200)))
+      .addSubcommand((s) => s.setName('warnexpiry').setDescription('Warnings stop counting after N days (0 = never)')
+        .addIntegerOption((o) => o.setName('days').setDescription('Days').setRequired(true).setMinValue(0).setMaxValue(365)))
+      .addSubcommand((s) => s.setName('reports').setDescription('Channel where /report lands (empty = mod log)')
+        .addChannelOption((o) => o.setName('channel').setDescription('Channel').addChannelTypes(ChannelType.GuildText)))
       .addSubcommand((s) => s.setName('view').setDescription('Show all settings')),
     async execute(interaction) {
       const g = store.guild(interaction.guildId);
@@ -94,6 +100,24 @@ module.exports = [
         store.save();
         return interaction.reply(ok(role ? `New members will get ${role}.` : 'Auto-role disabled.'));
       }
+      if (sub === 'appeal') {
+        const url = interaction.options.getString('url');
+        if (url && !/^https?:\/\//i.test(url)) return interaction.reply(fail('Enter a full URL starting with http:// or https://'));
+        g.appealUrl = url || null;
+        store.save();
+        return interaction.reply(ok(url ? `Appeal link set: ${url}` : 'Appeal link removed.'));
+      }
+      if (sub === 'warnexpiry') {
+        g.warnExpiryDays = interaction.options.getInteger('days');
+        store.save();
+        return interaction.reply(ok(g.warnExpiryDays ? `Warnings now expire after **${g.warnExpiryDays}** days.` : 'Warnings never expire.'));
+      }
+      if (sub === 'reports') {
+        const ch = interaction.options.getChannel('channel');
+        g.reportChannel = ch?.id ?? null;
+        store.save();
+        return interaction.reply(ok(ch ? `Reports → ${ch}` : 'Reports will go to the mod log.'));
+      }
       const a = g.automod;
       const e = new EmbedBuilder().setColor(COLORS.info).setTitle('Sentinel settings').addFields(
         { name: 'Mod roles', value: g.modRoles.map((r) => `<@&${r}>`).join(' ') || 'None (Administrator only)', inline: false },
@@ -102,6 +126,11 @@ module.exports = [
         { name: 'Cases', value: String(g.cases.length), inline: true },
         { name: 'Automod', value: a.enabled ? `**On** — invites: ${a.antiInvite ? '✅' : '❌'} · links: ${a.antiLink ? '✅' : '❌'} · spam: ${a.antiSpam ? `✅ (${a.spamMessages}/${a.spamSeconds}s)` : '❌'} · mentions: ${a.maxMentions || 'off'} · banned words: ${a.bannedWords.length}` : 'Off' },
         { name: 'Escalation', value: a.escalation.length ? a.escalation.map((s) => `${s.warnings} warnings → ${s.action}${s.minutes ? ` ${s.minutes}m` : ''}`).join('\n') : 'None' },
+        { name: 'Anti-raid', value: g.antiraid.enabled ? `On — ${g.antiraid.joinsPerMinute}/min → ${g.antiraid.raidAction}; accounts < ${g.antiraid.minAccountAgeDays || '–'}d → ${g.antiraid.youngAction}` : 'Off' },
+        { name: 'Appeal link', value: g.appealUrl || 'None', inline: true },
+        { name: 'Warning expiry', value: g.warnExpiryDays ? `${g.warnExpiryDays} days` : 'Never', inline: true },
+        { name: 'Reports', value: g.reportChannel ? `<#${g.reportChannel}>` : 'Mod log', inline: true },
+        { name: 'Tickets', value: g.tickets.enabled ? `On (${Object.keys(g.tickets.open).length} open)` : 'Off', inline: true },
         { name: 'Welcome', value: g.welcome.enabled ? `<#${g.welcome.channelId}>` : 'Off', inline: true },
         { name: 'Leave', value: g.leave.enabled ? `<#${g.leave.channelId}>` : 'Off', inline: true },
         { name: 'Logs', value: Object.entries(g.logs).map(([k, v]) => `${k}: <#${v}>`).join(' · ') || 'None' }

@@ -4,6 +4,8 @@ const logger = require('../lib/logger');
 const cases = require('../lib/cases');
 const { COLORS, full, rel, formatDuration } = require('../lib/util');
 const { fmtWelcome } = require('../commands/config');
+const antiraid = require('../lib/antiraid');
+const { modButtons } = require('../lib/actions');
 
 module.exports = [
   {
@@ -33,7 +35,10 @@ module.exports = [
       if (ageDays < 7) e.addFields({ name: '⚠️ New account', value: `Created ${Math.floor(ageDays)} day(s) ago` });
       const history = cases.forUser(member.guild.id, member.id);
       if (history.length) e.addFields({ name: '📋 Prior history', value: `${history.length} case(s) on record` });
-      await logger.log(member.guild, 'members', e);
+      const note = await antiraid.onJoin(member).catch((err) => { console.error('antiraid failed:', err); return null; });
+      if (note) e.addFields({ name: '🛡️ Anti-raid', value: note });
+      const suspicious = ageDays < 7 || history.length > 0;
+      await logger.log(member.guild, 'members', suspicious && !note ? { embeds: [e], components: [modButtons(member.id, { kickOnly: true })] } : e);
     },
   },
   {

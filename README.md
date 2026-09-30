@@ -60,6 +60,19 @@ numbered case in the mod log, with the moderator taken from the audit log.
 - **voice** — join, leave, move, server mute/deafen
 - **mod** — every case
 
+## Web dashboard
+
+The bot serves a dashboard at its Render URL (e.g. `https://sentinel-bot.onrender.com`) with
+**Login with Discord**. Anyone with *Manage Server* in a server the bot is in can:
+- see an overview (members, cases, warnings and automod hits this week, active bans)
+- pick log channels for each category
+- configure automod filters, banned words, ignored channels/roles and the escalation ladder
+- set welcome/leave messages and the auto-role
+- choose staff roles and the DM-on-punish setting
+- search all cases, open one, edit its reason or clear a warning
+
+It edits the same settings the slash commands use. Setup is in section 2 below.
+
 ## 1. Discord application
 
 1. <https://discord.com/developers/applications> → **New Application** → **Bot** → **Reset Token** (`DISCORD_TOKEN`).
@@ -78,6 +91,9 @@ numbered case in the mod log, with the moderator taken from the audit log.
    (`npm install && npm run deploy`) and start (`npm start`) commands.
 3. Environment variables: `DISCORD_TOKEN`, `CLIENT_ID`, optional `GUILD_ID` (instant commands in one
    server), and `DATA_CHANNEL_ID` (**recommended**, see below).
+   For the dashboard also add `CLIENT_SECRET` (Developer Portal → OAuth2 → Client Secret) and
+   `SESSION_SECRET` (any long random string).
+   Then in the Developer Portal → **OAuth2 → Redirects** add `https://<your-service>.onrender.com/auth/callback`.
 4. Keep it awake: UptimeRobot HTTP monitor on `https://<service>.onrender.com/health` every 5 min.
 
 ### Keeping cases after redeploys (`DATA_CHANNEL_ID`)

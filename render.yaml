@@ -15,3 +15,7 @@ services:
         sync: false
       - key: DATA_CHANNEL_ID
         sync: false
+      - key: CLIENT_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

@@ -5,15 +5,15 @@ const express = require('express');
 const { Client, GatewayIntentBits, Partials, Collection, MessageFlags } = require('discord.js');
 const store = require('./lib/store');
 const cases = require('./lib/cases');
+const dashboard = require('./lib/dashboard');
 
 // ---------------------------------------------------------------------------
 // Keep-alive web server (Render + UptimeRobot)
 // ---------------------------------------------------------------------------
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (_req, res) => res.status(200).send('Sentinel is alive'));
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok', uptime: process.uptime(), ready: client?.isReady() ?? false, guilds: client?.guilds.cache.size ?? 0 }));
-app.listen(PORT, () => console.log(`Keep-alive server listening on port ${PORT}`));
+app.listen(PORT, () => console.log(`Web server (keep-alive + dashboard) listening on port ${PORT}`));
 
 // ---------------------------------------------------------------------------
 // Client
@@ -32,6 +32,7 @@ const client = new Client({
 });
 client.commands = new Collection();
 store.attachClient(client);
+dashboard.mount(app, client); // web dashboard at / (Login with Discord)
 
 // ---- load commands (each file exports one command or an array of them) ----
 function loadDir(dir) {

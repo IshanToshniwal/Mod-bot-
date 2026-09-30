@@ -6,6 +6,16 @@ const { Client, GatewayIntentBits, Partials, Collection, MessageFlags } = requir
 const store = require('./lib/store');
 const cases = require('./lib/cases');
 const dashboard = require('./lib/dashboard');
+const actions = require('./lib/actions');
+
+// Keep the last errors in memory for the /status page.
+const recentErrors = [];
+const origError = console.error;
+console.error = (...args) => {
+  recentErrors.unshift({ at: new Date().toISOString(), text: args.map((a) => (a instanceof Error ? a.stack || a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' ').slice(0, 500) });
+  if (recentErrors.length > 50) recentErrors.pop();
+  origError(...args);
+};
 
 // ---------------------------------------------------------------------------
 // Keep-alive web server (Render + UptimeRobot)
@@ -32,6 +42,8 @@ const client = new Client({
 });
 client.commands = new Collection();
 store.attachClient(client);
+client.recentErrors = recentErrors;
+client.startedAt = Date.now();
 dashboard.mount(app, client); // web dashboard at / (Login with Discord)
 
 // ---- load commands (each file exports one command or an array of them) ----
@@ -56,16 +68,24 @@ for (const ev of loadDir('events')) {
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag} — ${client.guilds.cache.size} server(s)`);
   client.user.setActivity('over the server 👁️', { type: 3 });
-  await store.restoreFromDiscord();
+  await store.restore();
   setInterval(() => cases.tick(client).catch((e) => console.error('tick failed:', e)), 60_000);
 });
 
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  if (!interaction.inGuild()) return interaction.reply({ content: 'Use this in a server.', flags: MessageFlags.Ephemeral });
-  const cmd = client.commands.get(interaction.commandName);
-  if (!cmd) return;
+  if (!interaction.inGuild()) {
+    if (interaction.isRepliable()) return interaction.reply({ content: 'Use this in a server.', flags: MessageFlags.Ephemeral });
+    return;
+  }
   try {
+    if (interaction.isButton()) return await actions.handleButton(interaction);
+    if (interaction.isMessageContextMenuCommand() || interaction.isUserContextMenuCommand()) {
+      const cmd = client.commands.get(interaction.commandName);
+      return cmd ? await cmd.execute(interaction) : undefined;
+    }
+    if (!interaction.isChatInputCommand()) return;
+    const cmd = client.commands.get(interaction.commandName);
+    if (!cmd) return;
     await cmd.execute(interaction);
   } catch (err) {
     console.error(`Error in /${interaction.commandName}:`, err);
@@ -78,7 +98,7 @@ client.on('interactionCreate', async (interaction) => {
 
 process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', err));
 process.on('SIGTERM', async () => {
-  await store.backupToDiscord();
+  await store.flush();
   process.exit(0);
 });
 

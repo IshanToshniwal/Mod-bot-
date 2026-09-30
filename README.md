@@ -33,6 +33,24 @@ punishments, and **welcome/leave** messages. Runs on Render's free tier.
 Every action — including manual kicks/bans/timeouts done through Discord's UI — becomes a
 numbered case in the mod log, with the moderator taken from the audit log.
 
+### Protection
+| Command | What it does |
+|---|---|
+| `/antiraid set …` | Join-rate raid detection (e.g. 10 joins/min → raid mode: kick/timeout new joins for N minutes, alert with **Lock all / Kick recent / End** buttons) and minimum account age (younger accounts kicked / timed out / logged) |
+| `/antiraid view` / `/antiraid end` | |
+| `/lockdown start [reason]` / `/lockdown end` | Lock every text channel at once, and restore exactly the ones that were changed |
+| `/report @user reason` | Members report someone privately; lands in the report channel (or mod log) with **Timeout / Kick / Ban / Dismiss** buttons |
+| Right-click a message → **Apps → Report message** | Same, with a link to the message |
+
+Log embeds for automod hits and suspicious joins also carry quick-action buttons.
+
+### Community
+| Command | What it does |
+|---|---|
+| `/ticket panel [category]` | Posts an **Open ticket** button; each ticket is a private channel for the user + staff roles, with a **Close** button. Closing saves a transcript to the mod log |
+| `/ticket close` / `/ticket add @user` | |
+| `/selfroles title role1 [role2…role5]` | Posts a panel with buttons members click to add/remove roles |
+
 ### Info: `/userinfo`, `/serverinfo`, `/help`
 
 ### Setup (Manage Server)
@@ -44,6 +62,9 @@ numbered case in the mod log, with the moderator taken from the audit log.
 | `/config modrole @role` | Toggle a staff role (bypasses automod) |
 | `/config dm true/false` | DM users when punished |
 | `/config autorole @role` | Role given on join |
+| `/config appeal url` | Link included in ban/kick DMs |
+| `/config warnexpiry days` | Warnings stop counting toward escalation after N days |
+| `/config reports #channel` | Where `/report` lands |
 | `/config view` | Everything at a glance |
 | `/automod toggle enabled:true` | Turn automod on |
 | `/automod filters …` | invites / links / spam / max mentions / spam thresholds |
@@ -95,6 +116,11 @@ It edits the same settings the slash commands use. Setup is in section 2 below.
    `SESSION_SECRET` (any long random string).
    Then in the Developer Portal → **OAuth2 → Redirects** add `https://<your-service>.onrender.com/auth/callback`.
 4. Keep it awake: UptimeRobot HTTP monitor on `https://<service>.onrender.com/health` every 5 min.
+
+### Storage options
+Pick one (Postgres wins if both are set):
+- **Postgres (recommended once you have several servers):** Render → New → PostgreSQL (free) → copy the *Internal Database URL* → add it as `DATABASE_URL` on the bot service. The bot creates its table itself.
+- **Discord channel backup:** see below.
 
 ### Keeping cases after redeploys (`DATA_CHANNEL_ID`)
 Render's free disk is wiped on deploy. Make a private `#bot-data` channel only the bot and admins
